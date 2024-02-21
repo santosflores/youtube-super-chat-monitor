@@ -18,6 +18,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 from threading import Timer
 from ytscm.superchat_event import YTSCEvent
+from ytscm.chat_event import YTChatEvent
 
 import google_auth_oauthlib.flow as oauth
 import googleapiclient.discovery
@@ -35,6 +36,7 @@ class YTSCMonitor:
 
     # dictionary of super chats from the most recent fetch
     __super_chat_events = []
+    __chat_events = []
 
     # update function
     __update = None
@@ -42,9 +44,9 @@ class YTSCMonitor:
     # autofetch timer
     __autofetch_timer = None
 
-    def __init__(self, client_secrets_file, update_function=None):
+    def __init__(self, client_secrets_file, monitor_type='super_chat', update_function=None):
         """
-        Creates a new super chat monitor from a client secrets file
+        Creates a new monitor from a client secrets file
         :param client_secrets_file: the client secrets file
         :param update_function: the function to call when a new Super Chat is
         received
@@ -62,19 +64,21 @@ class YTSCMonitor:
             redirect_uri='urn:ietf:wg:oauth:2.0:oob'
         )
         # Tell the user to go to the authorization URL.
-        auth_url, _ = flow.authorization_url(prompt='consent')
-        print('Please go to this URL: {}'.format(auth_url))
+        # auth_url, _ = flow.authorization_url(prompt='consent')
+        # print('Please go to this URL: {}'.format(auth_url))
+        flow.run_local_server(access_type="offline")
         # The user will get an authorization code. This code is used to get the
         # access token.
-        code = input('Enter the authorization code: ')
-        flow.fetch_token(code=code)
-        credentials = flow.credentials        
+        # code = input('Enter the authorization code: ')
+        # flow.fetch_token(code=code)
+        credentials = flow.credentials
         # Get youtube client
         self.__youtube = googleapiclient.discovery.build(
             api_service_name,
             api_version,
             credentials=credentials
         )
+        self.__monitor_type = monitor_type
         # fetch the initial list of super chats
         self.fetch()
         # set update function (must come after initial fetch)
@@ -84,30 +88,37 @@ class YTSCMonitor:
         """
         Fetches a new list of super chats from the YouTube client
         """
-
-        # create request
-        request = self.__youtube.superChatEvents().list(
-            part="snippet"
-        )
-
-        # execute request
-        response = request.execute()
-
-        # iterate through super chats
-        for super_chat_json in response['items']:
-
-            # create a new super chat object
-            super_chat_event = YTSCEvent(super_chat_json)
-
-            # if its not already in our list
-            if super_chat_event not in self.__super_chat_events:
-
-                # add it to our list
-                self.__super_chat_events.append(super_chat_event)
-
-                # call our update function and pass the super chat event
-                if self.__update is not None:
-                    self.__update(super_chat_event)
+        if (self.__monitor_type == "super_chat"):
+            # create request
+            request = self.__youtube.superChatEvents().list(
+                part="snippet"
+            )
+            # execute request
+            response = request.execute()
+            # iterate through super chats
+            for super_chat_json in response['items']:
+                # create a new super chat object
+                super_chat_event = YTSCEvent(super_chat_json)
+                # if its not already in our list
+                if super_chat_event not in self.__super_chat_events:
+                    # add it to our list
+                    self.__super_chat_events.append(super_chat_event)
+                    # call our update function and pass the super chat event
+                    if self.__update is not None:
+                        self.__update(super_chat_event)
+        elif (self.__monitor_type == "chat"):
+            # create request
+            request = self.__youtube.liveChatMessages().list(
+                part=["snippet", "authorDetails"],
+                liveChatId="KicKGFVDZmNadVBoVFJuVVlLRUVpTFJWb2FjURILZ3Qtem5KWXR0NkU"
+            )
+            response = request.execute()
+            for chat_json in response["items"]:
+                chat_event = YTChatEvent(chat_json)
+                if chat_event not in self.__chat_events:
+                    self.__chat_events.append(chat_event)
+                    if self.__update is not None:
+                        self.__update(chat_event)
 
     def start(self, interval):
         """
