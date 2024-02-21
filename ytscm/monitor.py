@@ -17,7 +17,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 """
 
 from threading import Timer
-from ytscm.event import YTSCEvent
+from ytscm.superchat_event import YTSCEvent
 
 import google_auth_oauthlib.flow as oauth
 import googleapiclient.discovery
