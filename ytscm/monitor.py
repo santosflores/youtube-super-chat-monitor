@@ -59,20 +59,24 @@ class YTSCMonitor:
         flow = oauth.InstalledAppFlow.from_client_secrets_file(
             client_secrets_file=client_secrets_file,
             scopes=scopes,
+            redirect_uri='urn:ietf:wg:oauth:2.0:oob'
         )
-
-        credentials = flow.run_console()
-
-        # get youtube client
+        # Tell the user to go to the authorization URL.
+        auth_url, _ = flow.authorization_url(prompt='consent')
+        print('Please go to this URL: {}'.format(auth_url))
+        # The user will get an authorization code. This code is used to get the
+        # access token.
+        code = input('Enter the authorization code: ')
+        flow.fetch_token(code=code)
+        credentials = flow.credentials        
+        # Get youtube client
         self.__youtube = googleapiclient.discovery.build(
             api_service_name,
             api_version,
             credentials=credentials
         )
-
         # fetch the initial list of super chats
         self.fetch()
-
         # set update function (must come after initial fetch)
         self.__update = update_function
 
