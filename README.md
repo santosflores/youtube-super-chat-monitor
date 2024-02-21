@@ -1,5 +1,7 @@
 # YouTube Super Chat Monitor
 
+Recommended PY 3.11.6
+
 The YouTube Super Chat Monitor (YTSCM) is a simplified API for live Super
 Chat monitoring on YouTube. It enables you to easily poll the YouTube API for
 new Super Chats and execute a custom function upon receipt of one.
